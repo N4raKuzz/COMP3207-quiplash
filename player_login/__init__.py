@@ -16,11 +16,9 @@ def main(req: HttpRequest) -> HttpResponse:
     db = client.get_database_client(DATABASE_NAME)
     player_container = db.get_container_client(CONTAINER_NAME)
     
-    register_json = req.get_json()
-
-    # {"username":  "string" , "password" : "string"}    
-    username = register_json["account"]
-    password = register_json["password"]
+    input = req.get_json() # Input: {"username":  "string" , "password" : "string"}        
+    username = input["account"]
+    password = input["password"]
 
     user = list(player_container.query_items(query=f"SELECT * FROM c WHERE c.username = '{username}' "))
 

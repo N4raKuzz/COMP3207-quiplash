@@ -16,15 +16,12 @@ def main(req: HttpRequest) -> HttpResponse:
     database = client.get_database_client(DATABASE_NAME)
     container = database.get_container_client(CONTAINER_NAME)
     
-    register_json = req.get_json()
-
-    # {"username":  "string" , "password" : "string"}
-
+    input = req.get_json()  #Input: {"username":  "string" , "password" : "string"}
     result = True
     msg = ""
 
-    username = register_json["username"]
-    password = register_json["password"]
+    username = input["username"]
+    password = input["password"]
 
     if list(container.query_items(query=f"SELECT 1 FROM c WHERE c.username = '{username}'")):
         result = False
