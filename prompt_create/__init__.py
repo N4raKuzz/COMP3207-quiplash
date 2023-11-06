@@ -29,7 +29,7 @@ def main(req: HttpRequest) -> HttpResponse:
     msg = ""
 
     # Find if player exists
-    user = list(player_container.query_items(query=f"SELECT * FROM c WHERE c.username = '{username}'"))
+    user = list(player_container.query_items(query=f"SELECT * FROM player p WHERE p.username = '{username}'", enable_cross_partition_query=True))
     if not user:
         result = False
         msg = "Player does not exist"

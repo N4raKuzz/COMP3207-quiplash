@@ -20,7 +20,7 @@ def main(req: HttpRequest) -> HttpResponse:
     username = input["account"]
     password = input["password"]
 
-    user = list(player_container.query_items(query=f"SELECT * FROM c WHERE c.username = '{username}' "))
+    user = list(player_container.query_items(query=f"SELECT * FROM player p WHERE p.username = '{username}'", enable_cross_partition_query=True))
 
     result = False
     msg = ""

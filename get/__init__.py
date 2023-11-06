@@ -20,9 +20,9 @@ def main(req: HttpRequest) -> HttpResponse:
     langcode = input["language"]
 
     query = f"""
-    SELECT c
-    FROM c 
-    WHERE c.username IN ({','.join([f"'{player}'" for player in players])}) AND ARRAY_LENGTH(
+    SELECT *
+    FROM prompt p 
+    WHERE p.username IN ({','.join([f"'{player}'" for player in players])}) AND ARRAY_LENGTH(
         ARRAY(SELECT VALUE t FROM t IN c.texts WHERE t.language = '{langcode}')
     ) > 0
     """

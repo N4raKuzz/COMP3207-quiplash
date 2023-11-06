@@ -24,7 +24,7 @@ def main(req: HttpRequest) -> HttpResponse:
     addgames = input["add_to_games_played"]
     addscore = input["add_to_score"]
 
-    player = list(container.query_items(query=f"SELECT * FROM c WHERE c.username = '{username}'"))
+    player = list(container.query_items(query=f"SELECT * FROM player p WHERE p.username = '{username}'", enable_cross_partition_query=True))
 
     if player:
 

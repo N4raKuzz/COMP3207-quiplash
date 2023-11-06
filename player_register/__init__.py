@@ -23,7 +23,7 @@ def main(req: HttpRequest) -> HttpResponse:
     username = input["username"]
     password = input["password"]
 
-    if list(container.query_items(query=f"SELECT 1 FROM c WHERE c.username = '{username}'")):
+    if list(container.query_items(query=f"SELECT 1 FROM player p WHERE p.username = '{username}'", enable_cross_partition_query=True)):
         result = False
         msg = "Username already exists"
 
