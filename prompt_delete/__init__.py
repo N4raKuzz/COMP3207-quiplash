@@ -1,24 +1,57 @@
 import logging
-
+import json
+import re
+from azure.cosmos import CosmosClient
 from azure.functions import HttpRequest, HttpResponse
 
+URL = "https://cosmos4quiplash.documents.azure.com:443/"
+KEY = "MAS055fkgHmtlQcH0hxTZQ5FIkwe0B33mCV8sTLikSlxoT9payvASatqtAupocgz62N5xv0Q6CTkACDbKkfUeQ=="
+DATABASE_NAME = "quiplashDB"
+CONTAINER_PLAYER = "player"
+CONTAINER_PROMPT = "prompt"
+
+supported_languages = set(["en", "es", "it", "sv", "ru", "id", "bg", "zh-Hans"])
 
 def main(req: HttpRequest) -> HttpResponse:
-    logging.info('Python HTTP trigger function processed a request.')
+    logging.info('Start prompt_get function')
 
-    name = req.params.get('name')
-    if not name:
-        try:
-            req_body = req.get_json()
-        except ValueError:
-            pass
-        else:
-            name = req_body.get('name')
+    client = CosmosClient(URL, credential=KEY)
+    database = client.get_database_client(DATABASE_NAME)
+    player_container = database.get_container_client(CONTAINER_PLAYER)
+    prompt_container = database.get_container_client(CONTAINER_PROMPT)
+    
+    input = req.get_json()  # {"text": "string", "username": "string" }
 
-    if name:
-        return HttpResponse(f"Hello, {name}. This HTTP triggered function executed successfully.")
-    else:
-        return HttpResponse(
-            "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response.",
-            status_code=200
-        )
+    result = False
+    msg = ""
+
+    if "player" in input:
+        query = f"SELECT * FROM prompt p WHERE p.username = {input['player']}"
+        prompts = prompt_container.query_items(query=query, enable_cross_partition_query=True)
+
+        for p in prompts:
+            prompt_container.delete_item(p, partition_key = 'username')
+
+        result = True
+        msg = f"{len(prompts)} prompts deleted"
+   
+    if "word" in input:
+        count = 0
+        word = '\b' + input['word'] + '\b'
+
+        query = f"SELECT * FROM prompt p"
+        prompts = prompt_container.query_items(query=query, enable_cross_partition_query=True)
+
+        for p in prompts:
+            for t in p['texts']:
+                if not ("text" in t and "language" in t):
+                    continue
+                if t['language'] == 'en' & re.search(word, t['text']):
+                    prompt_container.delete_item(p, partition_key = 'username')
+                    count += 1
+
+        result = True
+        msg = f"{count} prompts deleted"       
+         
+    return HttpResponse(json.dumps({"result": result, "msg": msg }))
+    
