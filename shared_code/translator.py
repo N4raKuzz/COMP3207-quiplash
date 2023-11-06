@@ -7,9 +7,6 @@ key = "1b6c7be719824f4998acfa440cb5f77e"
 endpoint = "https://api.cognitive.microsofttranslator.com/"
 location = "uksouth"
 
-
-supported_languages = set(["en", "es", "it", "sv", "ru", "id", "bg", "zh-Hans"])
-
 def detect(text):
     
     url = endpoint + '/detect'
