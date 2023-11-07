@@ -23,7 +23,7 @@ def main(req: HttpRequest) -> HttpResponse:
     SELECT *
     FROM prompt p 
     WHERE p.username IN ({','.join([f"'{player}'" for player in players])}) AND ARRAY_LENGTH(
-        ARRAY(SELECT VALUE t FROM t IN c.texts WHERE t.language = '{langcode}')
+        ARRAY(SELECT VALUE t FROM t IN p.texts WHERE t.language = '{langcode}')
     ) > 0
     """
 

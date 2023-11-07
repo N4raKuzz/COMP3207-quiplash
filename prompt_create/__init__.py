@@ -35,6 +35,7 @@ def main(req: HttpRequest) -> HttpResponse:
         msg = "Player does not exist"
         return HttpResponse(json.dumps({"result": result, "msg": msg }))      
 
+    # Find if text length valid
     if len(text) < 15 or len(text) > 80:
         result = False
         msg = "Prompt less than 15 characters or more than 80 characters"

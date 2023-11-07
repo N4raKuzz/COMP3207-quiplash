@@ -7,10 +7,11 @@
       "direction": "in",
       "name": "req",
       "methods": [
-        "get",
         "post"
-      ]
+      ],
+      "route": "prompt/delete"
     },
+    
     {
       "type": "http",
       "direction": "out",
