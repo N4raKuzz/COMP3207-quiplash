@@ -13,7 +13,7 @@ CONTAINER_PROMPT = "prompt"
 supported_languages = set(["en", "es", "it", "sv", "ru", "id", "bg", "zh-Hans"])
 
 def main(req: HttpRequest) -> HttpResponse:
-    logging.info('Start prompt_get function')
+    logging.info('Processing Get Prompts')
 
     client = CosmosClient(URL, credential=KEY)
     database = client.get_database_client(DATABASE_NAME)
@@ -30,14 +30,14 @@ def main(req: HttpRequest) -> HttpResponse:
         prompts = prompt_container.query_items(query=query, enable_cross_partition_query=True)
 
         for p in prompts:
-            prompt_container.delete_item(p, partition_key = 'username')
+            prompt_container.delete_item(p, partition_key = p['username'])
 
         result = True
         msg = f"{len(prompts)} prompts deleted"
    
     if "word" in input:
         count = 0
-        word = '\b' + input['word'] + '\b'
+        word = input['word'] + '\b'
 
         query = f"SELECT * FROM prompt p"
         prompts = prompt_container.query_items(query=query, enable_cross_partition_query=True)
@@ -47,7 +47,7 @@ def main(req: HttpRequest) -> HttpResponse:
                 if not ("text" in t and "language" in t):
                     continue
                 if t['language'] == 'en' & re.search(word, t['text']):
-                    prompt_container.delete_item(p, partition_key = 'username')
+                    prompt_container.delete_item(p, partition_key = p['username'])
                     count += 1
 
         result = True

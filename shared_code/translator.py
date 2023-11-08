@@ -36,13 +36,13 @@ def detect(text):
     else:
         return None, None
 
-def translate(text, languages):
+def translate(text, language):
 
     url = endpoint + '/translate'
 
     params = {
         'api-version': '3.0',
-        'to': languages
+        'to': language
     }
 
     headers = {
@@ -60,12 +60,11 @@ def translate(text, languages):
     response = request.json()
 
     # Extract and format the translations
-    result = []
-    for t in response[0]['translations']:
-        result.append({
-            "language": t['to'],
-            "text": t['text']
-        })
+    result = {
+        "language": response[0]['to'],
+        "text": response[0]['text']
+    }
+    
 
     return result
 

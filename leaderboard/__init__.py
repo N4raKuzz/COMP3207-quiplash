@@ -9,10 +9,8 @@ KEY = "MAS055fkgHmtlQcH0hxTZQ5FIkwe0B33mCV8sTLikSlxoT9payvASatqtAupocgz62N5xv0Q6
 DATABASE_NAME = "quiplashDB"
 CONTAINER_PLAYER = "player"
 
-supported_languages = set(["en", "es", "it", "sv", "ru", "id", "bg", "zh-Hans"])
-
 def main(req: HttpRequest) -> HttpResponse:
-    logging.info('Start prompt_get function')
+    logging.info('Processing Leaderboard')
 
     client = CosmosClient(URL, credential=KEY)
     database = client.get_database_client(DATABASE_NAME)

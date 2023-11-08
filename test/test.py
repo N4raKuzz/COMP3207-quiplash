@@ -3,14 +3,14 @@ import json
 import uuid
 
 # 目标URL
-endpoint = "https://quiplash-zz22u21.azurewebsites.net"
+endpoint = "http://localhost:7071/api/"
 path_promptCreate = "prompt/create"
 path_playerLogin = "player/login"
 path_playerRegister = "player/register"
 path_playerUpdate = "player/update"
 path_utilsLearderboard = "utils/leaderboard"
 path_utilsGet = "utils/get"
-key = "?code=V9M5QmKZOkMpWODAfM-VnmWayt9bxNwHWMqpQIxH0aYVAzFud6K0OA=="
+key = "?code=bzv6_olxVECirEcx8uy4bS9DMwOHom2HMZ6lhs2rroClAzFul_wSng=="
 
 
 def checkEqual1(json_list1 ,json_list2 ):

@@ -40,16 +40,13 @@ def main(req: HttpRequest) -> HttpResponse:
         result = False
         msg = "Prompt less than 15 characters or more than 80 characters"
         
-    elif langcode in supported_languages & score > 0.3:
+    elif langcode in supported_languages and score > 0.3:
         result = True
         msg = "OK"
 
         texts = [{"language" : langcode, "text" : text}]
-        for lan in supported_languages - langcode:
-            texts.append({
-                'text' : translator.translate(text),
-                'lanaguage' : lan
-            })
+        for lan in (supported_languages - {langcode}):
+            texts.append(translator.translate(text,lan))
 
         output = {
             "username": username,

@@ -27,11 +27,11 @@ def main(req: HttpRequest) -> HttpResponse:
         result = False
         msg = "Username already exists"
 
-    elif (len(username) < 4 | len(username) > 14):
+    elif (len(username) < 4 or len(username) > 14):
         result = False
         msg = "Username less than 4 characters or more than 14 characters"
 
-    elif (len(password) < 10 | len(password) > 20):
+    elif (len(password) < 10 or len(password) > 20):
         result = False
         msg = "Password less than 10 characters or more than 20 characters" 
 

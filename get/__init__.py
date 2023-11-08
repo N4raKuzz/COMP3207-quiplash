@@ -9,13 +9,13 @@ DATABASE_NAME = "quiplashDB"
 CONTAINER_NAME = "prompt"
 
 def main(req: HttpRequest) -> HttpResponse:
-    logging.info('Start prompt_get function')
+    logging.info('Processing Get Prompts')
 
     client = CosmosClient(URL, credential=KEY)
     database = client.get_database_client(DATABASE_NAME)
     container = database.get_container_client(CONTAINER_NAME)
     
-    input = req.get_json()  # {"players":  [list of usernames], "language": "langcode"}
+    input = req.get_json()  # {"players":  [list of usernames], "language": string}
     players = input["players"]
     langcode = input["language"]
 
@@ -36,9 +36,9 @@ def main(req: HttpRequest) -> HttpResponse:
         for text in texts:
             if text['language'] == langcode:
                 new_item = {
-                    "id": texts["id"],
+                    "id": p["id"],
                     "text": text['text'],
-                    "username": texts["username"]
+                    "username": p["username"]
                 }
                 output.append(new_item)
     
