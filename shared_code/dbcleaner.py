@@ -18,7 +18,7 @@ def clean_player_db():
     query = f"SELECT * FROM player p"
     players = player_container.query_items(query=query, enable_cross_partition_query=True)
     for p in players:
-        player_container.delete_item(p, partition_key = p['username'])
+        player_container.delete_item(p, partition_key = p['id'])
 
 def clean_prompt_db():
     client = CosmosClient(URL, credential=KEY)
@@ -31,5 +31,5 @@ def clean_prompt_db():
         prompt_container.delete_item(p, partition_key = p['username'])
 
 
-#clean_player_db()
+clean_player_db()
 clean_prompt_db()

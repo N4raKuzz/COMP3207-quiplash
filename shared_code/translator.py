@@ -61,8 +61,8 @@ def translate(text, language):
 
     # Extract and format the translations
     result = {
-        "language": response[0]['to'],
-        "text": response[0]['text']
+        "language": response[0]['translations'][0]['to'],
+        "text": response[0]['translations'][0]['text']
     }
     
 

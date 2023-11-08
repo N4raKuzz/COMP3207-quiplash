@@ -13,7 +13,7 @@ CONTAINER_PROMPT = "prompt"
 supported_languages = set(["en", "es", "it", "sv", "ru", "id", "bg", "zh-Hans"])
 
 def main(req: HttpRequest) -> HttpResponse:
-    logging.info('Start prompt_get function')
+    logging.info('Processing create prompt')
 
     client = CosmosClient(URL, credential=KEY)
     database = client.get_database_client(DATABASE_NAME)
