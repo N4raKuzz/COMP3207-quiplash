@@ -36,7 +36,7 @@ def main(req: HttpRequest) -> HttpResponse:
    
     if "word" in input:
         count = 0
-        word = input['word'] + '\b'
+        word = input['word']
 
         query = f"SELECT * FROM prompt p"
         prompts = list(prompt_container.query_items(query=query, enable_cross_partition_query=True))

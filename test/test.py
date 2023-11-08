@@ -3,7 +3,7 @@ import json
 import uuid
 
 # 目标URL
-endpoint = "http://localhost:7071/api/"
+endpoint = "https://quiplash-zz22u21.azurewebsites.net/api/"
 path_promptCreate = "prompt/create"
 path_playerLogin = "player/login"
 path_playerRegister = "player/register"
