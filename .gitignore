@@ -35,6 +35,13 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+/.python_packages
+/.vscode
+/Lib
+/Include
+/Scripts
+pyenv.cfg
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
