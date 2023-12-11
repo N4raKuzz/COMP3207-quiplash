@@ -95,9 +95,11 @@ async function login(info) {
   console.log(`Handling login request: ${info.username}`);
 
   try {
-      const response = await axios.post(endpoint + path_playerLogin, {
-        username: info.username,
-        password: info.password
+      const response = await axios.get(endpoint + path_playerLogin, {
+        params:{
+          username: info.username,
+          password: info.password
+        }
       });
 
       if (response.data.result == true){
@@ -148,11 +150,12 @@ async function createPrompt(data) {
 
 }
 
+//Upodate score and games played of player
 async function updatePlayer(info){
   console.log(`Updating player: ${info.username}`);
 
   try {
-      const response = await axios.post(endpoint + path_playerUpdate, {
+      const response = await axios.put(endpoint + path_playerUpdate, {
         username: info.username,
         add_to_games_played: info.addgames,
         add_to_score: info.addscore
@@ -173,6 +176,35 @@ async function updatePlayer(info){
         result: False,
         msg: 'Update player failed due to server error.'
       };
+  }
+}
+
+async function getPrompt(info){
+  console.log(`Getting prompts of player ${info.username}`)
+
+  try{
+    const response = await axios.get(endpoint + path_utilsGet, {
+      params:{
+        username:info.username,
+        language:info.lancode
+      }
+    });
+
+    if (response.data.result == true){
+      console.log('Get player prompts Success with Response'. response.data.msg);
+      return response.data;
+    }
+    else{
+      console.log('Get player prompts Failed with Response', response.data.msg);
+      return response.data;
+    }
+
+  } catch(error){
+    console.error('Server Error during Get player prompts:', error);
+    return { 
+      result: False,
+      msg: 'Get player prompts failed due to server error'
+    };
   }
 }
 
@@ -279,6 +311,50 @@ async function disconnect(socket){
   };
 }
 
+function allocatePrompts(userlist, promptlist) {
+  console.log('Allocating prompts for players');
+
+  let userPromptMap = new Map();
+  let lenUser = userlist.length;
+  let shuffledPrompts = [...promptlist];
+  
+  //Function to shuffle the prompts
+  function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+      }
+  }
+  shuffleArray(shuffledPrompts);
+
+  if (lenUser % 2 == 0) {
+      //Each player gets 1 prompt
+      for (let i = 0; i < lenUser/2; i++) {
+        let prompts = [shuffledPrompts[i]]
+        userPromptMap.set(userlist[2*i], prompts);
+        userPromptMap.set(userlist[2*i+1], prompts);
+      }
+  } else {
+      //Store the first prompt
+    	firstprompt = shuffledPrompts[0];
+      for (let i = 0; i < lenUser; i++) {
+        //Each player gets 2 prompts
+        let prompts
+        if (i == lenUser -1){
+          //Give the first prompt to the last player
+          promtps = [shuffledPrompts[i], firstprompt]
+        }
+        else {
+          promtps = [shuffledPrompts[i], shuffledPrompts[i+1]];
+        }
+        userPromptMap.set(userlist[i],prompts);
+      }
+  }
+
+  return userPromptMap;
+}
+
+
 //Move user from audience to player
 async function addPlayerFromAudience(username){
   let result = false;
@@ -313,81 +389,103 @@ io.on('connection', socket => {
 
   //If user click register
   socket.on('register', info => {
-    res = register(info);
-    if (res.result == true){
-      //Remove user from lobby
-      socketInLobby.delete(socket);
-
-      //Log user in if register successful
-      if (num_player >= 8){
-        //Add to audiences if players num is full
-        socketToAudience.set(socket,info.username);
-        audienceToSocket.set(info.username,socket);
-        //socket.emit('login')
+    res = register(info).then(res => {
+      if (res.result == true){
+        //Remove user from lobby
+        socketInLobby.delete(socket);
+  
+        //Log user in if register successful
+        if (num_player >= 8){
+          //Add to audiences if players num is full
+          socketToAudience.set(socket,info.username);
+          audienceToSocket.set(info.username,socket);
+          //socket.emit('login')
+        }
+        else{
+          //Add to players
+          socketToPlayer.set(socket,info.username);
+          playerToSocket.set(info.username,socket);
+          num_player += 1;
+          //socket.emit('login')
+        }  
       }
       else{
-        //Add to players
-        socketToPlayer.set(socket,info.username);
-        playerToSocket.set(info.username,socket);
-        num_player += 1;
-        //socket.emit('login')
-      }  
-    }
-    else{
-      socket.emit('error', res.msg)
-    }
+        socket.emit('error', res.msg)
+      }
+    });
+    
   });
 
   //If user click login
   socket.on('login', info => {
-    res = login(info);
-    if (res.result == true){
-      if (num_player >= 8){
-        //Add to audiences if players num is full
-        socketToAudience.set(socket,info.username);
-        audienceToSocket.set(info.username,socket);
-        //socket.emit('login')
+    login(info).then(res => {
+      if (res.result == true){
+        if (num_player >= 8){
+          //Add to audiences if players num is full
+          socketToAudience.set(socket,info.username);
+          audienceToSocket.set(info.username,socket);
+          //socket.emit('login')
+        }
+        else{
+          //Add to players
+          socketToPlayer.set(socket,info.username);
+          playerToSocket.set(info.username,socket);
+          num_player += 1;
+          //socket.emit('login')
+        }  
       }
-      else{
-        //Add to players
-        socketToPlayer.set(socket,info.username);
-        playerToSocket.set(info.username,socket);
-        num_player += 1;
-        //socket.emit('login')
-      }  
-    }
-    else {
-      socket.emit('error', res.msg)
-    }
+      else {
+        socket.emit('error', res.msg)
+      }
+
+    });
+    
   });
 
   socket.on('prompt_create', text => {
-    login_res = checkLoggedIn(socket);
-    
-    if (login_res.result == true){
-      res = createPrompt({
-        text: text,
-        username: login_res.username
-      });
-    }
-    else {
-      socket.emit('error','Not Authenticated to Create Prompts')
-    }
 
+    checkLoggedIn(socket).then(login_res => {
+      if (login_res.result == true){
+        res = createPrompt({
+          text: text,
+          username: login_res.username
+        }).then(res =>{
+          if (res.result == true){
+            socket.emit('promp_create', res.msg)
+          }
+          else{
+            socket.emit('error', res.msg)
+          }
+        });
+      }
+      else {
+        socket.emit('error','Not Authenticated to Create Prompts')
+      }
+      
+    });
+    
   });
 
   socket.on('prompt_delete', info => {
-    login_res = checkLoggedIn(socket);
-    
-    if (login_res.result == true){
-      res = deletePrompt({
-        text: text,
-        username: login_res.username
-      });
-    }
-    else {
-      socket.emit('error','Not Authenticated to Create Prompts')
-    }
+    checkLoggedIn(socket).then(login_res => {
+      if (login_res.result == true){
+        res = deletePrompt({
+          text: text,
+          username: login_res.username
+        }).then(res =>{
+          if (res.result == true){
+            socket.emit('promp_delete', res.msg)
+          }
+          else{
+            socket.emit('error', res.msg)
+          }
+        });
+      }
+      else {
+        socket.emit('error','Not Authenticated to Create Prompts')
+      }
+
+    });
 
   });
 
