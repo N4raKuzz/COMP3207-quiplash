@@ -1,54 +1,15 @@
-bin
-obj
-csx
-.vs
-edge
-Publish
-
-*.user
-*.suo
-*.cscfg
-*.Cache
-project.lock.json
-
-/packages
-/TestResults
-
-/tools/NuGet.exe
-/App_Data
-/secrets
-/data
-.secrets
-appsettings.json
-
+# Node build artifacts
 node_modules
-dist
+npm-debug.log
 
-# Local python packages
-.python_packages/
+# Local development
+*.env
+*.dev
+.DS_Store
 
-# Python Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-/.python_packages
-/.vscode
-/Lib
-/Include
-/Scripts
-pyenv.cfg
+# Docker
+Dockerfile
+docker-compose.yml
 
 
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
 
-# Azurite artifacts
-__blobstorage__
-__queuestorage__
-__azurite_db*__.json
