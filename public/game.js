@@ -1,11 +1,12 @@
 var socket = null;
-var currentView = 'lobby';
+var currentView = null;
 
 //Prepare game
 var app = new Vue({
     el: '#game',
     data: {
         currentView: currentView,
+        state: 0,
 
         // Client data
         playerlist: [],
@@ -30,12 +31,17 @@ var app = new Vue({
         error: false,
         msg: "",
 
-        // Current prompt and round info
+        // Prompt and round info
         prompt: "",
-        answer: {},
-        vote: {},
+        current_prompt: "",
         allocation: {},
-        round: 0
+        your_answer: "",
+        answers: {},
+        current_vote: {},
+        canVote: true,
+        votes: {},
+        leaderboard: [],
+        count: 0
         
     },
 
@@ -56,6 +62,23 @@ var app = new Vue({
             this.chatmessage = '';
         },
 
+        register() {
+            data = {
+                username: this.username,
+                password: this.password
+            }
+            socket.emit("register", data);
+        },
+
+        login() {
+            data = {
+                username: this.username,
+                password: this.password
+            }
+            socket.emit("login", data);
+        },
+
+
         handleLogin(message) {
             this.currentView = message.state;
             this.isLoggedIn = true;
@@ -73,10 +96,11 @@ var app = new Vue({
             this.audiencelist = message.audiencelist;
             this.playerlist = message.playerlist;
 
-            this.prompt = message.prompt;
-            this.vote = message.votes.get(prompt);
-            this.allocation = message.allocation.get(prompt);
-            this.answer = message.answers.get(prompt);
+            this.votes = message.votes;
+            this.allocation = message.allocation.get(username);
+            this.promptlist = message.allocation.keys();
+            this.answers = message.answers;
+            this.state = message.state;
         },
 
         handleJoin(message) {
@@ -87,12 +111,78 @@ var app = new Vue({
             this.currentView = message.state;
         },
 
+        prompt_create() {
+            socket.emit("prompt_create", this.prompt);
+        },
+
         handleAnswer(message) {
             this.currentView = message.state;
+            this.count = 0;
+            if (allocation.length > 0) {
+                current_prompt = allocation[this.count];
+            } 
+        },
+
+        answer() {
+            data = {
+                prompt: this.current_prompt,
+                answer: this.your_answer
+            }
+            socket.emit("answer", data);
+            count ++;
+            if (count >= this.allocation.length) {
+                socket.emit("finish");
+                currentView = "wait";
+            } else {
+                this.current_prompt = this.allocation[count];
+            }
         },
 
         handleVote(message) {
             this.currentView = message.state;
+            this.count = 0;
+            this.current_prompt = this.promptlist[this.count]
+            this.current_vote = {
+                prompt: this.current_prompt,
+                p1: this.answers.get(this.current_prompt)[0],
+                p2: this.answers.get(this.current_prompt)[1]
+            };
+            if (this.current_vote.p1.username == this.user.username && this.current_vote.p2.username == this.user.username) {
+                this.canVote = false;
+            } 
+            else{
+                this.canVote = true;
+            }
+
+        },
+
+        vote1() {
+            this.vote(this.current_vote.p1.username);
+        },
+
+        vote2() {
+            this.vote(this.current_vote.p1.username);
+        },
+
+        vote(text) {
+            data = {
+                prompt: this.current_prompt,
+                username: text
+            }
+            socket.emit("vote", data);
+            count++;
+            if (count >= this.promptlist.length) {
+                socket.emit("finish");
+                currentView = "wait";
+            } else {
+                this.current_prompt = this.promptlist[this.count]
+                this.current_vote = this.answers.get(this.current_prompt);
+            }
+            
+        },
+
+        finish(){
+            socket.emit("finish");
         },
 
         handleResults(message) {
@@ -105,31 +195,6 @@ var app = new Vue({
 
     }
 });
-
-// User functions
-function register(data) {
-    socket.emit("register", data);
-}
-
-function login(data) {
-    socket.emit("login", data);
-}
-  
-function vote(data) {
-    socket.emit("vote", data);
-}
-
-function answer(data) {
-    socket.emit("answer", data);
-}
-
-function prompt_create(data) {
-    socket.emit("prompt_create", data);
-}
-
-function finish(data) {
-    socket.emit("finish", data);
-}
 
 // Admin functions
 function next() {
@@ -150,7 +215,7 @@ function connect() {
     socket = io();
 
     //Connect
-    socket.on('connect', function() {
+    socket.on('connection', function() {
         //Set connected state to true
         app.connected = true;
     });

@@ -1,21 +1,45 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+  <%- include('header'); -%>
 
-    <%- include('header'); -%>
+  <h2 class="title">Display Screen</h2>
 
-    <h2 class="title">ECS Example Game</h2>
-
-    <div id="game">
-        <div v-if="connected">
-            <ul id="chat">
-                <li v-for="message in messages">{{message}}</li>
-            </ul>
+  <div id="game">
+    <div v-if="connected">
+      <div class="row">
+        <div class="col-8">
+          <div v-if="currentView === 'joining'">
+            <h3>
+              Join from <a:href="url">{{ url }}</a>
+            </h3>
+            <%- include('joining'); -%>
+          </div>
+          <div v-else-if="currentView === 'prompts'">
+            <%- include('prompts_display'); -%>
+          </div>
+          <div v-else-if="currentView === 'answers'">
+            <%- include('answers_display'); -%>
+          </div>
+          <div v-else-if="currentView === 'voting'">
+            <%- include('voting_display'); -%>
+          </div>
+          <div v-else-if="currentView === 'results'">
+            <%- include('results_display'); -%>
+          </div>
+          <div v-else-if="currentView === 'scores'">
+            <%- include('scores_display'); -%>
+          </div>
+          <div v-else-if="currentView === 'game over'">
+            <%- include('end_display'); -%>
+          </div>
         </div>
-        <div v-else>
-            <p>Connecting...</p>
-        </div>
+        <div class="col-4"><%- include('chat'); -%></div>
+      </div>
     </div>
+    <div v-else>
+      <p>Connecting...</p>
+    </div>
+  </div>
 
-    <%- include('footer'); -%>
-
+  <%- include('footer'); -%>
 </html>

@@ -1,0 +1,14 @@
+<div class="container-fluid">
+  <div class="row">
+    <h2>Scores of the round</h2>
+  </div>
+  <div class="row">
+    <div class="card" style="max-width: 18rem" v-for="result in votes">
+      <div class="card-body">
+        <h5 class="card-title">{{ current_prompt }}</h5>
+        <p class="card-text">{{ result.p1.username }} Get Votes: {{ result.p1.votes }}</p>
+        <p class="card-text">{{ result.p2.username }} Get Votes: {{ result.p2.votes }}</p>
+      </div>
+    </div>
+  </div>
+</div>

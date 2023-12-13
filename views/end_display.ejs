@@ -1,0 +1,18 @@
+<div class="container-fluid">
+    <div class="row">
+      <h2>Game score</h2>
+    </div>
+    <div class="row">
+      <div
+        class="card"
+        style="max-width: 18rem"
+        v-for="player in leaderboard"
+      >
+        <div class="card-body">
+          <h5 class="card-title">{{ player.username }}</h5>
+          <p class="card-text">Score: {{ player.score }} points.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  

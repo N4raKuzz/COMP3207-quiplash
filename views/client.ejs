@@ -3,15 +3,66 @@
 
     <%- include('header'); -%>
 
-    <h2 class="title">ECS Example Game</h2>
-
+    <h2 class="title">QUIPLASH</h2>
     <div id="game">
-        <div v-if="connected">
-            <%- include('chat'); -%>
+    
+        <div v-if="!isLoggedIn">
+            <h3 class="title">Login Page</h3>
+            <%- include('login'); -%>
         </div>
         <div v-else>
-            <p>Connecting...</p>
+            <div v-if="currentView === 'joining'">
+                <h3 class="title">Joining</h3>
+                <%- include('joining'); -%>
+            </div>
+            <div v-else-if="currentView === 'prompts'">
+                <h3 class="title">Prompt</h3>
+                <%- include('prompts'); -%>
+            </div>
+            <div v-else-if="currentView === 'answers'">
+                <h3 class="title">Answer</h3>
+                <%- include('answers'); -%>
+            </div>
+            <div v-else-if="currentView === 'voting'">
+                <h3 class="title">Voting</h3>
+                <%- include('voting'); -%>
+            </div>
+            <div v-else-if="currentView === 'results'">
+                <h3 class="title">Result</h3>
+                <%- include('results'); -%>
+            </div>
+            <div v-else-if="currentView === 'scores'">
+                <h3 class="title">Score</h3>
+                <%- include('scores'); -%>
+            </div>
+            <div v-else-if="currentView === 'game over'">
+                <h3 class="title">Final Score</h3>
+                <%- include('end_display'); -%>
+            </div>
+            <div v-else>
+                <p>Connecting...</p>
+            </div>
         </div>
+        
+        <!-- <div v-if="state > 2">
+            <form>
+                <strong>Create Prompt</strong>
+                <div>
+                    <input 
+                        type="text" 
+                        @keyup.enter="prompt_create()" 
+                        v-model="prompt" 
+                        class="form-control"
+                    >
+                </div>
+            </form>
+            <div>
+                <button class="btn btn-primary" @click="prompt_create">
+                    Submit
+                </button>
+            </div>                  
+        </div> --> 
+        
     </div>
 
     <%- include('footer'); -%>

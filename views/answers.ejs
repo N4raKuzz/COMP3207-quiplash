@@ -1,0 +1,29 @@
+<div class="container-fluid">
+  <div v-if="allocation.length == 0">
+    <% include('wait'); %>
+  </div>
+  <div v-else>
+    <div v-if="currentView === 'answers'">
+      <h1>Prompt:</h1>
+      <h1>{{ current_prompt }}</h1>
+      <div class="container-fluid">
+        <div class="form-group">
+          <label for="prompt">Answer</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model="your_answer"
+            @keyup.enter="answer()"
+            placeholder="Enter your answer"
+          />
+        </div>
+        <button type="submit" class="btn btn-primary" @click="submitAnswer()">
+          Submit
+        </button>
+      </div>
+    </div>
+    <div v-if="currentView === 'wait'">
+      <% include('wait'); %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,21 @@
+<div class="container-fluid">
+  <div class="row">
+    <h1>Answers received</h1>
+  </div>
+  <div class="row">
+    <div class="card text-white bg-primary mb-3 p-0" v-for="player in playerlist">
+      <div class="card-header">Player</div>
+      <div class="card-body">
+        <h5 class="card-title">
+          {{ player }}
+        </h5>
+        <span v-if="player.state != 'AnswersFinished'">
+          <p class="card-text">Waiting for answers</p>
+        </span>
+        <span v-else>
+          <p class="card-text">Finished</p>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>

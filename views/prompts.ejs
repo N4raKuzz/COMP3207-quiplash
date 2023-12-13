@@ -1,0 +1,17 @@
+<div class="container-fluid">
+  <div class="card mb-3 p-0">
+    <div class="card-header">Please add a prompt</div>
+    <div class="card-body">
+      <h5 class="card-title">Prompt</h5>
+      <input
+        type="text"
+        class="form-control"
+        @keyup.enter="prompt_create"
+        v-model="prompt"
+      />
+      <button type="submit" class="btn btn-primary" @click="prompt_create">
+        Submit
+      </button>
+    </div>
+  </div>
+</div>

@@ -19,7 +19,6 @@ const path_utilsGet = "utils/get"
 const key = "?code=bzv6_olxVECirEcx8uy4bS9DMwOHom2HMZ6lhs2rroClAzFul_wSng=="
 
 let num_player = 0;
-let userlist = [];
 //Store user-client pair who is playing
 let socketToPlayer = new Map();
 let playerToSocket = new Map();
@@ -29,9 +28,10 @@ let audienceToSocket = new Map();
 //Store client that unknown player is not login/registed
 let socketInLobby = new Map();
 
-let promptAllocation
+let promptAllocation = new Map();
 let promptAnswer = new Map();
 let promptVote = new Map();
+let promtpResult = new Map();
 
 // State design:
 // 1 - Joining: waiting for players
@@ -405,13 +405,13 @@ async function logPlayerIn(socket, username){
 async function updatePlayer(username){
 
   data = {
-    prompt: currentPrompt,
     allocation: promptAllocation,
-    votes: promptVote,
+    votes: promtpResult,
     answers: promptAnswer,
     round: gameRound,
     playerlist: playerToSocketList.keys(),
-    audiencelist: audienceToSocketList.keys()
+    audiencelist: audienceToSocketList.keys(),
+    state: gameState
   };
 
   if (audienceToSocket.has(username)){
@@ -440,7 +440,7 @@ function checkState(){
   }
 
   if (gameState == 4){
-    countVotes();
+    promtpResult = countVotes();
   }
 
   return true
@@ -542,24 +542,36 @@ async function disconnect(socket){
   };
 }
 
+// Count the votes for each prompt answers
 function countVotes() {
   let promptVoteResults = new Map();
 
   for (let prompt of promptVote.keys()) {
     let votes = promptVote.get(prompt);
-    let voteCounts = {};
+    let voteCounts = [];
 
     for (let vote of votes) {
-      if (voteCounts[vote]) {
-        voteCounts[vote]++;
+      if (voteCounts[0].username == vote){
+        voteCounts[0].votes ++;
+      } else if (voteCounts[1].username == vote){
+        voteCounts[1].votes ++;
       } else {
-        voteCounts[vote] = 1;
+        voteCounts.push({
+          username: vote,
+          votes: 1
+        });
       }
+      
     }
     promptVoteResults.set(prompt, voteCounts);
 
   }
   return promptVoteResults;
+}
+
+// Count the score for each player of one prompt
+function countScores() {
+  
 }
 
 function allocatePrompts() {
@@ -577,32 +589,23 @@ function allocatePrompts() {
 
   let userPromptMap = new Map();
   let lenUser = playerlist.length;
-  let shuffledPrompts = [...promptlist];
-  
-  //Function to shuffle the prompts
-  function shuffleArray(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [array[i], array[j]] = [array[j], array[i]];
-      }
-  }
-  shuffleArray(shuffledPrompts);
 
   if (lenUser % 2 == 0) {
       //Each player gets 1 prompt
       for (let i = 0; i < lenUser / 2; i++) {
-        let prompt = shuffledPrompts[i];
-        userPromptMap.set(prompt, [playerlist[2 * i], playerlist[2 * i + 1]]);
+        let prompt = [promptlist[i]];
+        userPromptMap.set(playerlist[2*i], prompt);
+        userPromptMap.set(playerlist[2*i+1], prompt);
     }
   } else {
     for (let i = 0; i < lenUser; i++) {
-        let users;
+        let prompts;
         if (i == lenUser - 1) {
-            users = [playerlist[i], playerlist[0]];
+            prompts = [promtplist[i], promtplist[0]];
         } else {
-            users = [playerlist[i], playerlist[i + 1]];
+            prompts = [promtplist[i], promtplist[i+1]];
         }
-        userPromptMap.set(shuffledPrompts[i], users);
+        userPromptMap.set(playerlist[i], prompts);
     }
   }
 
@@ -812,7 +815,7 @@ io.on('connection', socket => {
   socket.on('prompt_delete', info => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true){
-        res = deletePrompt({
+        deletePrompt({
           text: text,
           username: login_res.username
         }).then(res =>{
@@ -834,7 +837,7 @@ io.on('connection', socket => {
 
   // Detect User disconnect
   socket.on('disconnect', () => {
-    res = disconnect(socket)
+    let res = disconnect(socket)
     console.log(`Dropped connection to ${res.username}`);
     socket.disconnect();
   });
