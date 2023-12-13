@@ -19,6 +19,7 @@ const path_utilsGet = "utils/get"
 const key = "?code=bzv6_olxVECirEcx8uy4bS9DMwOHom2HMZ6lhs2rroClAzFul_wSng=="
 
 let num_player = 0;
+let userlist = [];
 //Store user-client pair who is playing
 let socketToPlayer = new Map();
 let playerToSocket = new Map();
@@ -28,9 +29,9 @@ let audienceToSocket = new Map();
 //Store client that unknown player is not login/registed
 let socketInLobby = new Map();
 
+let promptAllocation
 let promptAnswer = new Map();
 let promptVote = new Map();
-let playerScore = new Map();
 
 // State design:
 // 1 - Joining: waiting for players
@@ -41,6 +42,7 @@ let playerScore = new Map();
 // 6 - Scores: total scores (tally up total overall scores)
 // 7 - Game Over: end of game (show final scores)
 let gameState = 1;
+let gameRound = 1;
 let userState = new Map();
 
 //Setup static page handling
@@ -166,7 +168,7 @@ async function createPrompt(data) {
 }
 
 //Upodate score and games played of player
-async function updatePlayer(info){
+async function updatePlayerScore(info){
   console.log(`Updating player: ${info.username}`);
 
   try {
@@ -322,9 +324,22 @@ async function checkLoggedIn(socket){
 async function logPlayerIn(socket, username){
   //Remove user from lobby
   socketInLobby.delete(socket);
-  
-  //Log user in if register successful
-  if (num_player >= 8){
+  playerlist.push(username);
+  //Log user in 
+  if (num_players == 0){
+    //Add to audiences if players num is full
+    socketToPlayer.set(socket, username);
+    playerToSocket.set(username, socket);
+    let data = {
+      state: gameState,
+      role: 'admin',
+      lancode: 'en'
+    }
+    userState.set(username, data);
+    num_player += 1;
+    socket.emit('login', data);
+
+  } else if (num_player >= 8){
     //Add to audiences if players num is full
     socketToAudience.set(socket, username);
     audienceToSocket.set(username, socket);
@@ -335,8 +350,9 @@ async function logPlayerIn(socket, username){
     }
     userState.set(username, data);
     num_player += 1;
-  }
-  else{
+    socket.emit('login', data);
+
+  } else{
     //Add to players
     socketToPlayer.set(socket, username);
     playerToSocket.set(username, socket);
@@ -347,14 +363,66 @@ async function logPlayerIn(socket, username){
     }
     userState.set(username, data);
     num_player += 1;
-    //socket.emit('login')
+    socket.emit('login', data);
+    
   }
+
+  updatePlayer(username);
+  switch(gameState){
+    case 1:
+      // Joining
+      socket.emit('joining');
+      break;
+    case 2:
+      // Prompts
+      socket.emit('prompts');
+      break;
+    case 3:
+      // Answers
+      socket.emit('answers');
+      break;
+    case 4:
+      // Voting
+      socket.emit('voting');
+      break;
+    case 5:
+      // Results
+      socket.emit('results');
+      break;
+    case 6:
+      // Scores
+      socket.emit('scores');
+      break;
+    case 7:
+      // Scores
+      socket.emit('game over');
+      break;
+          
+  }
+
 }
 
 async function updatePlayer(username){
-  data = userState.get(username);
-  data.state += 1;
-  userState.set(username, data);
+
+  data = {
+    prompt: currentPrompt,
+    allocation: promptAllocation,
+    votes: promptVote,
+    answers: promptAnswer,
+    round: gameRound,
+    playerlist: playerToSocketList.keys(),
+    audiencelist: audienceToSocketList.keys()
+  };
+
+  if (audienceToSocket.has(username)){
+    socket = audienceToSocket.get(username);
+    socket.emit('update', data);
+  }
+  else if (playerToSocket.has(username)){
+    socket = playerToSocket.get(username);
+    socket.emit('update', data);
+  }
+  
 }
 
 function checkState(){
@@ -366,37 +434,75 @@ function checkState(){
   }
 
   gameState += 1;
+  if (gameState == 7){
+    gameState = 3;
+    promptAllocation = allocatePrompts();
+  }
+
+  if (gameState == 4){
+    countVotes();
+  }
+
   return true
 }
 
-function updateAll(staeNum){
+function updateAll(){
   if (checkState()){
-    for (let username of playerToSocket.keys()){
-      let socket = playerToSocket.get(username);
+    for (let username of playerlist){
+      let socket
+      if (audienceToSocket.has(username)){
+        socket = audienceToSocket.get(username);
+      }
+      else if (playerToSocket.has(username)){
+        socket = playerToSocket.get(username);
+      }
+      updatePlayer(username);
+
       switch(gameState){
-        case 1:
-          // Joining
-          socket.emit('joining');
-        case 2:
-          // Prompts
-          socket.emit('prompts');
         case 3:
           // Answers
-          let prompt_allocation = allocatePrompts();
-          socket.emit('answers', prompt_allocation.get(username));
+          socket.emit('answers');
+          gameRound += 1;
+          break;
         case 4:
           // Voting
-          socket.emit('voting', promptAnswer.get(prompt));
+          socket.emit('voting');
+          break;
         case 5:
           // Results
-          socket.emit('results', promptAnswer.get(
+          socket.emit('results');
+          break;
+        case 6:
+          // Scores
+          socket.emit('scores');
+          break;
+          
       }
+      
     }
+    return true;
+  }
+  else {
+    return false;
   }
   
 }
 
-function startGame(){
+function endAll(){
+  // Game over
+  for (let username of playerToSocket.keys()){
+    let socket = playerToSocket.get(username);
+    socket.emit('game over');
+  }
+}
+
+function startAll(){
+  // Start game
+  gameState = 2;
+  for (let username of playerToSocket.keys()){
+    let socket = playerToSocket.get(username);
+    socket.emit('prompts');
+  }
 }
 
 async function disconnect(socket){
@@ -437,9 +543,23 @@ async function disconnect(socket){
 }
 
 function countVotes() {
+  let promptVoteResults = new Map();
+
   for (let prompt of promptVote.keys()) {
-    
+    let votes = promptVote.get(prompt);
+    let voteCounts = {};
+
+    for (let vote of votes) {
+      if (voteCounts[vote]) {
+        voteCounts[vote]++;
+      } else {
+        voteCounts[vote] = 1;
+      }
+    }
+    promptVoteResults.set(prompt, voteCounts);
+
   }
+  return promptVoteResults;
 }
 
 function allocatePrompts() {
@@ -452,7 +572,7 @@ function allocatePrompts() {
     promtplist = promptlist.push(getPrompt({
       username: user,
       lancode: 'en'
-    }))
+    }).text)
   }
 
   let userPromptMap = new Map();
@@ -470,26 +590,20 @@ function allocatePrompts() {
 
   if (lenUser % 2 == 0) {
       //Each player gets 1 prompt
-      for (let i = 0; i < lenUser/2; i++) {
-        let prompts = [shuffledPrompts[i]]
-        userPromptMap.set(playerlist[2*i], prompts);
-        userPromptMap.set(playerlist[2*i+1], prompts);
-      }
+      for (let i = 0; i < lenUser / 2; i++) {
+        let prompt = shuffledPrompts[i];
+        userPromptMap.set(prompt, [playerlist[2 * i], playerlist[2 * i + 1]]);
+    }
   } else {
-      //Store the first prompt
-    	firstprompt = shuffledPrompts[0];
-      for (let i = 0; i < lenUser; i++) {
-        //Each player gets 2 prompts
-        let prompts
-        if (i == lenUser -1){
-          //Give the first prompt to the last player
-          promtps = [shuffledPrompts[i], firstprompt]
+    for (let i = 0; i < lenUser; i++) {
+        let users;
+        if (i == lenUser - 1) {
+            users = [playerlist[i], playerlist[0]];
+        } else {
+            users = [playerlist[i], playerlist[i + 1]];
         }
-        else {
-          promtps = [shuffledPrompts[i], shuffledPrompts[i+1]];
-        }
-        userPromptMap.set(playerlist[i],prompts);
-      }
+        userPromptMap.set(shuffledPrompts[i], users);
+    }
   }
 
   return userPromptMap;
@@ -522,13 +636,14 @@ async function addPlayerFromAudience(username){
 io.on('connection', socket => { 
   console.log('New connection');
   socketInLobby.set(socket,'unknown')
+  socket.emit('connection'); 
 
-  //Handle on chat message received
+  //Handle chat message received
   socket.on('chat', message => {
     handleChat(message);
   });
 
-  //If user click register
+  // User register
   socket.on('register', info => {
     res = register(info).then(res => {
       if (res.result == true){
@@ -541,7 +656,7 @@ io.on('connection', socket => {
     
   });
 
-  //If user click login
+  // User login
   socket.on('login', info => {
     login(info).then(res => {
       if (res.result == true){
@@ -555,6 +670,7 @@ io.on('connection', socket => {
     
   });
 
+  // User creates new prompt
   socket.on('prompt_create', text => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true){
@@ -578,6 +694,22 @@ io.on('connection', socket => {
     
   });
 
+  // Client finish current session
+  socket.on('finish', () => {
+    checkLoggedIn(socket).then(login_res => {
+      if (login_res.result == true){
+        username = login_res.username;
+        updatePlayer(username);
+      }
+      else {
+        socket.emit('error','Not Authenticated to report updates')
+      }
+      
+    });
+    
+  });
+
+  // Player answers prompt
   socket.on('answer', data => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true && login_res.role == 'player'){
@@ -609,6 +741,7 @@ io.on('connection', socket => {
 
   });
 
+  // Player vote for answers
   socket.on('vote', data => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true){
@@ -618,15 +751,11 @@ io.on('connection', socket => {
         // Store the votes to the answer
         if (promptVote.has(prompt)) {
           let votes = promptVote.get(prompt);
-          answers.push({
-            vote: vote
-          });
+          votes.push(vote);
           promptVote.set(prompt, votes);
         }
         else{
-          promptVote.set(prompt, [{
-            vote: vote
-          }]);
+          promptVote.set(prompt, [vote]);
         }
       }
       else {
@@ -637,6 +766,49 @@ io.on('connection', socket => {
 
   });
 
+  // Admin calls for next state
+  socket.on('next', () => {
+    checkLoggedIn(socket).then(login_res => {
+      if (login_res.result == true && login_res.role == 'admin') {
+        updateAll();
+      }
+      else {
+        socket.emit('error','Not Authenticated to Proceed')
+      }
+      
+    });
+
+  });  
+
+  // Admin ends game
+  socket.on('game over', () => {
+    checkLoggedIn(socket).then(login_res => {
+      if (login_res.result == true && login_res.role == 'admin') {
+        endAll();
+      }
+      else {
+        socket.emit('error','Not Authenticated to End Game')
+      }
+      
+    });
+
+  });
+
+  // Admin Starts game
+  socket.on('start', () => {
+    checkLoggedIn(socket).then(login_res => {
+      if (login_res.result == true && login_res.role == 'admin') {
+        startAll();
+      }
+      else {
+        socket.emit('error','Not Authenticated to Start Game')
+      }
+      
+    });
+
+  });
+
+  // Admin delete prompts
   socket.on('prompt_delete', info => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true){
@@ -660,7 +832,7 @@ io.on('connection', socket => {
 
   });
 
-  //If user disconnect
+  // Detect User disconnect
   socket.on('disconnect', () => {
     res = disconnect(socket)
     console.log(`Dropped connection to ${res.username}`);
