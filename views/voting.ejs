@@ -1,37 +1,28 @@
 <div class="container-fluid">
-  <div v-if="currentView === 'wait'">
+  <div v-if="isWaiting">
     <%- include('wait'); %>
   </div>
   <div v-else>
-    <div v-if="currentView === 'voting">
-      <div class="card">
-        <div class="card-header">Voting for Prompt:</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ current_vote.prompt }}</h5>
+    <div class="card">
+      <div class="card-header">Voting for Prompt:</div>
+      <div class="card-body">
+          <h5 class="card-title">{{ current_prompt }}</h5>
           <div v-if="!canVote">
             <p class="card-text">Can't vote for your own answer</p>
+            <button type="button" @click="skipvote">Skip</button>
           </div>
           <div v-else>
-            <button
-            type="button"
-            class="btn btn-outline-primary btn-lg mb-3"
-            @click="vote1"
-            >
-              {{ current_vote.p1.answer }}
+            <button type="button" @click="vote1">
+              {{ current_vote.p1answer }}
             </button>
-            <button
-              type="button"
-              class="btn btn-outline-primary btn-lg mb-3"
-              @click="vote2"
-            >
-              {{ current_vote.p2.answer }}
+            <button type="button" @click="vote2">
+              {{ current_vote.p2answer }}
             </button>
           </div>
         </div>
-      </div>
-    </div>  
+      </div> 
   </div>
-  <div v-if="currentView === 'wait'">
-    <% include('wait'); %>
+  <div v-if="isAdmin">
+    <button class="btn btn-primary" @click="next">Next</button>
   </div>
 </div>

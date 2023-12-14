@@ -44,7 +44,7 @@
             </div>
         </div>
         
-        <!-- <div v-if="state > 2">
+        <div v-if="state > 2">
             <form>
                 <strong>Create Prompt</strong>
                 <div>
@@ -61,8 +61,10 @@
                     Submit
                 </button>
             </div>                  
-        </div> --> 
-        
+        </div> 
+        <div v-if="isWaiting">
+            <% include('wait'); %>
+        </div>
     </div>
 
     <%- include('footer'); -%>

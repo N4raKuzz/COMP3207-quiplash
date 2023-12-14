@@ -2,6 +2,7 @@
 
 //Set up express
 const express = require('express');
+const axios = require("axios");
 const app = express();
 
 //Setup socket.io
@@ -19,6 +20,8 @@ const path_utilsGet = "utils/get"
 const key = "?code=bzv6_olxVECirEcx8uy4bS9DMwOHom2HMZ6lhs2rroClAzFul_wSng=="
 
 let num_player = 0;
+let admin = '';
+let playerlist = [];
 //Store user-client pair who is playing
 let socketToPlayer = new Map();
 let playerToSocket = new Map();
@@ -31,7 +34,8 @@ let socketInLobby = new Map();
 let promptAllocation = new Map();
 let promptAnswer = new Map();
 let promptVote = new Map();
-let promtpResult = new Map();
+let promptResult = new Map();
+let promptScore = new Map();
 
 // State design:
 // 1 - Joining: waiting for players
@@ -44,6 +48,7 @@ let promtpResult = new Map();
 let gameState = 1;
 let gameRound = 1;
 let userState = new Map();
+let leaderboard = new Map();
 
 //Setup static page handling
 app.set('view engine', 'ejs');
@@ -99,7 +104,7 @@ async function register(info) {
   } catch (error) {
       console.error('Server Error during Register:', error);
       return {
-        result: False,
+        result: false,
         msg: 'Register failed due to server error.'
       };
   }
@@ -113,7 +118,7 @@ async function login(info) {
 
   try {
       const response = await axios.get(endpoint + path_playerLogin + key, {
-        params:{
+        data:{
           username: info.username,
           password: info.password
         }
@@ -131,7 +136,7 @@ async function login(info) {
   } catch (error) {
       console.error('Server Error during Login:', error);
       return {
-        result: False,
+        result: false,
         msg: 'Login failed due to server error.'
       };
   }
@@ -143,7 +148,7 @@ async function createPrompt(data) {
   console.log(`Handle new prompt creating request from: ${data.username}`);
 
   try {
-    const response = await axios.post(endpoint + path_promptCreate, {
+    const response = await axios.post(endpoint + path_promptCreate + key, {
       text: data.text,
       username: data.username
     });
@@ -153,14 +158,14 @@ async function createPrompt(data) {
       return response.data;
     }
     else{
-      onsole.log('Prompt created Failed with Response:', response.data);
+      console.log('Prompt created Failed with Response:', response.data);
       return response.data;
     }
       
   } catch (error) {
       console.error('Server Error during Prompt Create:', error);
       return {
-        result: False,
+        result: false,
         msg: 'Creating prompt failed due to server error.'
       };
   }
@@ -190,36 +195,27 @@ async function updatePlayerScore(info){
   } catch (error) {
       console.error('Server Error during Update player:', error);
       return {
-        result: False,
+        result: false,
         msg: 'Update player failed due to server error.'
       };
   }
 }
 
-async function getPrompt(info){
-  console.log(`Getting prompts of player ${info.username}`)
+async function getPrompt(players){
 
   try{
     const response = await axios.get(endpoint + path_utilsGet + key, {
-      params:{
-        username:info.username,
-        language:info.lancode
+      data:{
+        players:players,
+        language:'en'
       }
     });
-
-    if (response.data.result == true){
-      console.log('Get player prompts Success with Response'. response.data.msg);
-      return response.data;
-    }
-    else{
-      console.log('Get player prompts Failed with Response', response.data.msg);
-      return response.data;
-    }
+    return response.data;
 
   } catch(error){
     console.error('Server Error during Get player prompts:', error);
     return { 
-      result: False,
+      result: false,
       msg: 'Get player prompts failed due to server error'
     };
   }
@@ -247,7 +243,7 @@ async function getLeaderboard(num){
   } catch(error){
     console.error('Server Error during Get leaderboard:', error);
     return { 
-      result: False,
+      result: false,
       msg: 'Get leaderboard failed due to server error'
     };
   }
@@ -285,7 +281,7 @@ async function daletePrompt(data) {
   } catch (error) {
       console.error('Server Error during Prompt Create:', error);
       return {
-        result: False,
+        result: false,
         msg: 'Deleting prompt failed due to server error.'
       };
   }
@@ -310,7 +306,13 @@ async function checkLoggedIn(socket){
     result = true;
     msg = 'Socket logged in as player';
     username = socketToPlayer.get(socket);
-    role = 'player';
+
+    if (socketToPlayer.get(socket) == admin){
+      role = 'admin';
+    } else {
+      role = 'player';
+    }
+    
   }
 
   return {
@@ -326,16 +328,17 @@ async function logPlayerIn(socket, username){
   socketInLobby.delete(socket);
   playerlist.push(username);
   //Log user in 
-  if (num_players == 0){
-    //Add to audiences if players num is full
+  if (num_player == 0){
+    //Set first player as admin
     socketToPlayer.set(socket, username);
     playerToSocket.set(username, socket);
     let data = {
       state: gameState,
       role: 'admin',
-      lancode: 'en'
     }
-    userState.set(username, data);
+    admin = username;
+    console.log(`Set ${username} as admin`);
+    userState.set(username, gameState);
     num_player += 1;
     socket.emit('login', data);
 
@@ -343,12 +346,11 @@ async function logPlayerIn(socket, username){
     //Add to audiences if players num is full
     socketToAudience.set(socket, username);
     audienceToSocket.set(username, socket);
-    data = {
+    let data = {
       state: gameState,
       role: 'audience',
-      lancode: 'en'
     }
-    userState.set(username, data);
+    userState.set(username, gameState);
     num_player += 1;
     socket.emit('login', data);
 
@@ -356,14 +358,20 @@ async function logPlayerIn(socket, username){
     //Add to players
     socketToPlayer.set(socket, username);
     playerToSocket.set(username, socket);
-    data = {
+    let data = {
       state: gameState,
       role: 'player',
-      lancode: 'en'
     }
-    userState.set(username, data);
+    userState.set(username, gameState);
     num_player += 1;
     socket.emit('login', data);
+
+    for (let player of playerToSocket.keys()) {
+      updatePlayer(player);
+    }
+    for (let audience of audienceToSocket.keys()) {
+      updatePlayer(audience);
+    }
     
   }
 
@@ -403,14 +411,17 @@ async function logPlayerIn(socket, username){
 }
 
 async function updatePlayer(username){
+  let socket;
 
-  data = {
-    allocation: promptAllocation,
-    votes: promtpResult,
-    answers: promptAnswer,
+  let data = {
+    allocation: JSON.stringify(Array.from(promptAllocation)),
+    votes: JSON.stringify(Array.from(promptResult)),
+    answers: JSON.stringify(Array.from(promptAnswer)),
+    scores: JSON.stringify(Array.from(promptScore)),
     round: gameRound,
-    playerlist: playerToSocketList.keys(),
-    audiencelist: audienceToSocketList.keys(),
+    leaderboard: JSON.stringify(Array.from(leaderboard)),
+    playerlist: [...playerToSocket.keys()],
+    audiencelist: [...audienceToSocket.keys()],
     state: gameState
   };
 
@@ -425,73 +436,86 @@ async function updatePlayer(username){
   
 }
 
-function checkState(){
+async function checkState(){
+  console.log('checking all client states');
   for (let username of userState.keys()){
-    if (userState.get(username).state != gameState){
+    if (userState.get(username) < gameState){
+      console.log(`User ${username} not up to date`);
       return false;
     }
+    userState.set(username,gameState);
     continue;
   }
 
   gameState += 1;
-  if (gameState == 7){
+  if (gameState == 7 || gameState == 3){
     gameState = 3;
-    promptAllocation = allocatePrompts();
+    await allocatePrompts().then();
   }
 
-  if (gameState == 4){
-    promtpResult = countVotes();
+  if (gameState == 5){
+    await countVotes().then();
+  }
+
+  if (gameState == 6){
+    await countScores().then();
   }
 
   return true
 }
 
 function updateAll(){
-  if (checkState()){
-    for (let username of playerlist){
-      let socket
-      if (audienceToSocket.has(username)){
-        socket = audienceToSocket.get(username);
-      }
-      else if (playerToSocket.has(username)){
-        socket = playerToSocket.get(username);
-      }
-      updatePlayer(username);
+  console.log("Update all client to next state");
 
-      switch(gameState){
-        case 3:
-          // Answers
-          socket.emit('answers');
-          gameRound += 1;
-          break;
-        case 4:
-          // Voting
-          socket.emit('voting');
-          break;
-        case 5:
-          // Results
-          socket.emit('results');
-          break;
-        case 6:
-          // Scores
-          socket.emit('scores');
-          break;
-          
+  checkState().then(res =>{
+    if (res){
+      for (let username of userState.keys()){
+        let socket
+        if (audienceToSocket.has(username)){
+          socket = audienceToSocket.get(username);
+        }
+        else if (playerToSocket.has(username)){
+          socket = playerToSocket.get(username);
+        }
+        updatePlayer(username);
+  
+        switch(gameState){
+          case 3:
+            // Answers
+            console.log("Going to answers")
+            socket.emit('answers');
+            break;
+          case 4:
+            // Voting
+            console.log("Going to voting")
+            socket.emit('voting');
+            break;
+          case 5:
+            // Results
+            console.log("Going to results")
+            socket.emit('results');
+            break;
+          case 6:
+            // Scores
+            console.log("Going to scores")
+            socket.emit('scores');
+            break;
+            
+        }
       }
-      
     }
-    return true;
-  }
-  else {
-    return false;
-  }
+  });
   
 }
 
 function endAll(){
   // Game over
+  console.log("Game over");
+  countLeaderboard().then();
+
   for (let username of playerToSocket.keys()){
     let socket = playerToSocket.get(username);
+    updatePlayer(username);
     socket.emit('game over');
   }
 }
@@ -499,6 +523,7 @@ function endAll(){
 function startAll(){
   // Start game
   gameState = 2;
+  gameRound += 1;
   for (let username of playerToSocket.keys()){
     let socket = playerToSocket.get(username);
     socket.emit('prompts');
@@ -524,6 +549,7 @@ async function disconnect(socket){
 
     result = true;
     msg = 'Removed from audience'
+    num_player -= 1
   }
   else if (socketToPlayer.has(socket)){
     username = socketToPlayer.get(socket);
@@ -532,9 +558,9 @@ async function disconnect(socket){
 
     result = true;
     msg = 'Removed from player'
+    num_player -= 1
   }
 
-  num_player -= 1
   return {
     result: result,
     msg: msg,
@@ -543,73 +569,104 @@ async function disconnect(socket){
 }
 
 // Count the votes for each prompt answers
-function countVotes() {
-  let promptVoteResults = new Map();
+async function countVotes() {
 
   for (let prompt of promptVote.keys()) {
     let votes = promptVote.get(prompt);
-    let voteCounts = [];
+    let voteCounts = {
+      p1name: "",
+      p1count: 0,
+      p2name: "",
+      p2count: 0
+    };
 
     for (let vote of votes) {
-      if (voteCounts[0].username == vote){
-        voteCounts[0].votes ++;
-      } else if (voteCounts[1].username == vote){
-        voteCounts[1].votes ++;
+      if(voteCounts.p1name == vote){
+        voteCounts.p1count++;
+      } else if(voteCounts.p2name == vote){
+        voteCounts.p2count++;
+      } else if (voteCounts.p1name == ""){
+        voteCounts.p1name = vote;
+        voteCounts.p1count = 1;
       } else {
-        voteCounts.push({
-          username: vote,
-          votes: 1
-        });
+        voteCounts.p2name = vote;
+        voteCounts.p2count = 1;
       }
-      
     }
-    promptVoteResults.set(prompt, voteCounts);
 
+    promptResult.set(prompt, voteCounts);
   }
-  return promptVoteResults;
+  console.log(promptResult);
 }
 
 // Count the score for each player of one prompt
-function countScores() {
-  
+async function countScores() {
+  for (let prompt of promptResult.keys()) {
+    let resultOfprompt = promptResult.get(prompt);
+    let scoreCounts = {
+      p1name: resultOfprompt.p1name,
+      p1score: resultOfprompt.p1count * gameRound * 100,
+      p2name: resultOfprompt.p2name,
+      p2score: resultOfprompt.p2count * gameRound * 100
+    };
+
+    promptScore.set(prompt, scoreCounts);
+  }
+  console.log(promptScore);
 }
 
-function allocatePrompts() {
+async function countLeaderboard(){
+  for (let player of playerToSocket.keys()) {
+    let finalScore = 0;
+    for (let prompt of promptScore.keys()) {
+      if (promptScore.get(prompt).p1name == player){
+          finalScore = finalScore + promptScore.get(prompt).p1score;
+      } else if (promptScore.get(prompt).p2name == player) {
+          finalScore = finalScore + promptScore.get(prompt).p2score;
+      }
+    }
+    leaderboard.set(player, finalScore);
+  }
+  console.log(leaderboard);
+}
+
+async function allocatePrompts() {
   console.log('Allocating prompts for players');
 
-  let playerlist = playerToSocket.keys();
-  let userlist = userState.keys();
+  let playerlist = [...playerToSocket.keys()];
+  let userlist = [...userState.keys()];
   let promptlist = [];
-  for (let user of userlist){
-    promtplist = promptlist.push(getPrompt({
-      username: user,
-      lancode: 'en'
-    }).text)
-  }
 
-  let userPromptMap = new Map();
-  let lenUser = playerlist.length;
+  console.log(`Getting prompts from users: ${userlist}`);
+  await getPrompt(userlist).then(res => {
+    for (let i = 0; i < res.length; i++) {
+      promptlist.push(res[i].text);
+    }
 
-  if (lenUser % 2 == 0) {
+    console.log(`Prompts: ${promptlist}`);
+    promptAllocation.clear();
+    let lenUser = playerlist.length;
+
+    if (lenUser % 2 == 0) {
       //Each player gets 1 prompt
       for (let i = 0; i < lenUser / 2; i++) {
         let prompt = [promptlist[i]];
-        userPromptMap.set(playerlist[2*i], prompt);
-        userPromptMap.set(playerlist[2*i+1], prompt);
+        promptAllocation.set(playerlist[2*i], prompt);
+        promptAllocation.set(playerlist[2*i+1], prompt);
     }
-  } else {
-    for (let i = 0; i < lenUser; i++) {
+    } else {
+      for (let i = 0; i < lenUser; i++) {
         let prompts;
         if (i == lenUser - 1) {
-            prompts = [promtplist[i], promtplist[0]];
+            prompts = [promptlist[i], promptlist[0]];
         } else {
-            prompts = [promtplist[i], promtplist[i+1]];
+            prompts = [promptlist[i], promptlist[i+1]];
         }
-        userPromptMap.set(playerlist[i], prompts);
+        promptAllocation.set(playerlist[i], prompts);
+      } 
     }
-  }
 
-  return userPromptMap;
+  });
 }
 
 
@@ -648,9 +705,9 @@ io.on('connection', socket => {
 
   // User register
   socket.on('register', info => {
-    res = register(info).then(res => {
+    register(info).then(res => {
       if (res.result == true){
-        logPlayerIn(socket, info.username)
+        logPlayerIn(socket, info.username).then();
       }
       else{
         socket.emit('error', res.msg)
@@ -663,7 +720,7 @@ io.on('connection', socket => {
   socket.on('login', info => {
     login(info).then(res => {
       if (res.result == true){
-        logPlayerIn(socket, info.username)
+        logPlayerIn(socket, info.username).then();
       }
       else {
         socket.emit('error', res.msg)
@@ -677,7 +734,7 @@ io.on('connection', socket => {
   socket.on('prompt_create', text => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true){
-        res = createPrompt({
+        createPrompt({
           text: text,
           username: login_res.username
         }).then(res =>{
@@ -701,8 +758,9 @@ io.on('connection', socket => {
   socket.on('finish', () => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true){
-        username = login_res.username;
-        updatePlayer(username);
+        let username = login_res.username;
+        console.log(`User ${username} Finish Current State`);
+        userState.set(username, userState.get(username) + 1);
       }
       else {
         socket.emit('error','Not Authenticated to report updates')
@@ -715,26 +773,30 @@ io.on('connection', socket => {
   // Player answers prompt
   socket.on('answer', data => {
     checkLoggedIn(socket).then(login_res => {
-      if (login_res.result == true && login_res.role == 'player'){
+      if (login_res.result == true && (login_res.role == 'player' || login_res.role == 'admin')){
         let username = login_res.username;
         let prompt = data.prompt;
         let answer = data.answer;
-
+        console.log(`${username} answer to prompt: ${prompt}`);
         // Store the answer to the prompt
         if (promptAnswer.has(prompt)) {
-          let answers = promptAnswer.get(prompt);
-          answers.push({
-            username: username,
-            answer: answer
+          let answer1 = promptAnswer.get(prompt);
+          promptAnswer.set(prompt, {
+            p1name: answer1.p1name,
+            p1answer: answer1.p1answer,
+            p2name: username,
+            p2answer: answer
           });
-          promptAnswer.set(prompt, answers);
         }
         else{
-          promptAnswer.set(prompt, [{
-            username: username,
-            answer: answer
-          }]);
+          promptAnswer.set(prompt, {
+            p1name: username,
+            p1answer: answer
+          });
         }
+        console.log(promptAnswer);
+        console.log(JSON.stringify(Array.from(promptAnswer)));
+        console.log(JSON.parse(JSON.stringify(Array.from(promptAnswer))));
       }
       else {
         socket.emit('error','Not Authenticated to Answer Prompts')
@@ -773,6 +835,8 @@ io.on('connection', socket => {
   socket.on('next', () => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true && login_res.role == 'admin') {
+        let username = login_res.username;
+        userState.set(username, gameState);
         updateAll();
       }
       else {
@@ -801,6 +865,7 @@ io.on('connection', socket => {
   socket.on('start', () => {
     checkLoggedIn(socket).then(login_res => {
       if (login_res.result == true && login_res.role == 'admin') {
+        console.log('Game started');
         startAll();
       }
       else {

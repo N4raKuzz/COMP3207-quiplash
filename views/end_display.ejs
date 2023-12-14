@@ -6,11 +6,11 @@
       <div
         class="card"
         style="max-width: 18rem"
-        v-for="player in leaderboard"
+        v-for="player in leaderboard.keys()"
       >
         <div class="card-body">
-          <h5 class="card-title">{{ player.username }}</h5>
-          <p class="card-text">Score: {{ player.score }} points.</p>
+          <h5 class="card-title">{{ player }}</h5>
+          <p class="card-text">Score: {{ leaderboard.get(player) }} points.</p>
         </div>
       </div>
     </div>

@@ -18,6 +18,7 @@ var app = new Vue({
         isLoggedIn: false,
         isAdmin: false,
         isAudience: false,
+        isWaiting: false,
         admin: "",
         username: "",
         password: "",
@@ -33,13 +34,18 @@ var app = new Vue({
 
         // Prompt and round info
         prompt: "",
+        promptlist: [],
         current_prompt: "",
+        allocations: new Map(),
         allocation: {},
         your_answer: "",
-        answers: {},
+        answers: new Map(),
         current_vote: {},
         canVote: true,
-        votes: {},
+        votes: new Map(),
+        current_result: {},
+        scores: new Map(),
+        current_score: {},
         leaderboard: [],
         count: 0
         
@@ -80,7 +86,7 @@ var app = new Vue({
 
 
         handleLogin(message) {
-            this.currentView = message.state;
+            this.state = message.state;
             this.isLoggedIn = true;
             if (message.role == 'admin') {
                 this.isAdmin = true;
@@ -88,7 +94,6 @@ var app = new Vue({
                 this.isAudience = true;
             }
 
-            this.username = message.username;
         },
 
         handleUpdate(message) {
@@ -96,19 +101,23 @@ var app = new Vue({
             this.audiencelist = message.audiencelist;
             this.playerlist = message.playerlist;
 
-            this.votes = message.votes;
-            this.allocation = message.allocation.get(username);
-            this.promptlist = message.allocation.keys();
-            this.answers = message.answers;
+            this.votes = message.votes;         
+            this.allocations = new Map(JSON.parse(message.allocation));             
+            this.allocation = this.allocations.get(this.username);
+            this.answers = new Map(JSON.parse(message.answers)); 
+            this.promptlist = [...this.answers.keys()];
+            this.votes = new Map(JSON.parse(message.votes));
+            this.scores = new Map(JSON.parse(message.scores));
+            this.leaderboard = new Map(JSON.parse(message.leaderboard));
             this.state = message.state;
         },
 
         handleJoin(message) {
-            this.currentView = message.state;
+            this.currentView = 'joining'
         },
 
         handlePrompt(message) {
-            this.currentView = message.state;
+            this.currentView = 'prompts';
         },
 
         prompt_create() {
@@ -116,38 +125,40 @@ var app = new Vue({
         },
 
         handleAnswer(message) {
-            this.currentView = message.state;
+            this.currentView = 'answers';
+            this.isWaiting = false;
             this.count = 0;
-            if (allocation.length > 0) {
-                current_prompt = allocation[this.count];
+            if (this.allocation.length > 0) {
+                this.current_prompt = this.allocation[this.count];
             } 
         },
 
         answer() {
-            data = {
+            let data = {
                 prompt: this.current_prompt,
                 answer: this.your_answer
             }
             socket.emit("answer", data);
-            count ++;
-            if (count >= this.allocation.length) {
-                socket.emit("finish");
-                currentView = "wait";
+            this.count ++;
+            if (this.count >= this.allocation.length) {
+                if (!this.isAdmin) {
+                    socket.emit("finish");
+                }
+                this.isWaiting = true;
             } else {
-                this.current_prompt = this.allocation[count];
+                this.current_prompt = this.allocation[this.count];
             }
         },
 
         handleVote(message) {
-            this.currentView = message.state;
+            this.currentView = 'voting';
+            this.isWaiting = false;
             this.count = 0;
-            this.current_prompt = this.promptlist[this.count]
-            this.current_vote = {
-                prompt: this.current_prompt,
-                p1: this.answers.get(this.current_prompt)[0],
-                p2: this.answers.get(this.current_prompt)[1]
-            };
-            if (this.current_vote.p1.username == this.user.username && this.current_vote.p2.username == this.user.username) {
+            this.current_prompt = this.promptlist[this.count];
+            this.current_vote = this.answers.get(this.current_prompt);
+            console.log(this.current_vote);
+            console.log(this.votes);
+            if (this.current_vote.p1name == this.username && this.current_vote.p2name == this.username) {
                 this.canVote = false;
             } 
             else{
@@ -157,57 +168,133 @@ var app = new Vue({
         },
 
         vote1() {
-            this.vote(this.current_vote.p1.username);
+            this.vote(this.current_vote.p1name);
         },
 
         vote2() {
-            this.vote(this.current_vote.p1.username);
+            this.vote(this.current_vote.p1name);
+        },
+
+        skipvote() {
+            this.count++;
+            if (this.count >= this.promptlist.length) {
+                if (!this.isAdmin) {
+                    socket.emit("finish");
+                }
+                this.isWaiting = true;
+            } else {
+                this.current_prompt = this.promptlist[this.count]
+                this.current_vote = this.answers.get(this.current_prompt);
+                console.log(`${this.current_vote}`);
+                if (this.current_vote.p1name == this.username || this.current_vote.p2name == this.username) {
+                    this.canVote = false;
+                } 
+                else{
+                    this.canVote = true;
+                }
+            }
         },
 
         vote(text) {
-            data = {
+            let data = {
                 prompt: this.current_prompt,
                 username: text
             }
             socket.emit("vote", data);
-            count++;
-            if (count >= this.promptlist.length) {
-                socket.emit("finish");
-                currentView = "wait";
+            this.count++;
+            if (this.count >= this.promptlist.length) {
+                if (!this.isAdmin) {
+                    socket.emit("finish");
+                }
+                this.isWaiting = true;
             } else {
                 this.current_prompt = this.promptlist[this.count]
                 this.current_vote = this.answers.get(this.current_prompt);
+                console.log(this.current_vote);
+                if (this.current_vote.p1name == this.username || this.current_vote.p2name == this.username) {
+                    this.canVote = false;
+                } 
+                else{
+                    this.canVote = true;
+                }
             }
             
+        },
+
+        next() {
+            if (this.isAdmin) {
+                socket.emit("next");
+            }
+        },
+
+        start() {
+            if (this.isAdmin) {
+                socket.emit("start");
+            }
+        },
+
+        end() {
+            if (this.isAdmin) {
+                socket.emit("game over");
+            }
         },
 
         finish(){
             socket.emit("finish");
         },
 
+        result(){
+            this.count++;
+            if (this.count >= this.promptlist.length) {
+                if (!this.isAdmin) {
+                    socket.emit("finish");
+                }
+                this.isWaiting = true;
+            } else {
+                this.current_prompt = this.promptlist[this.count]
+                this.current_result = this.votes.get(this.current_prompt);
+            }
+            
+        },
+
         handleResults(message) {
-            this.currentView = message.state;
+            this.currentView = 'results';
+            this.isWaiting = false;
+            this.count = 0;
+            this.current_prompt = this.promptlist[this.count]
+            this.current_result = this.votes.get(this.current_prompt)
+        },
+
+        score(){
+            this.count++;
+            if (this.count >= this.promptlist.length) {
+                if (!this.isAdmin) {
+                    socket.emit("finish");
+                }
+                this.isWaiting = true;
+            } else {
+                this.current_prompt = this.promptlist[this.count];
+                this.current_score = this.scores.get(this.current_prompt);
+            } 
         },
 
         handleScores(message) {
-            this.currentView = message.state;
+            this.currentView = 'scores';
+            console.log(this.scores);
+            this.isWaiting = false;
+            this.count = 0;
+            this.current_prompt = this.promptlist[this.count];
+            this.current_score = this.scores.get(this.current_prompt);
+
+        },
+
+        handleEnd(message) {
+            this.currentView = 'game over';
+            console.log(this.leaderboard);
         }
 
     }
 });
-
-// Admin functions
-function next() {
-    socket.emit("next");
-}
-
-function start() {
-    socket.emit("start");
-}
-
-function end() {
-    socket.emit("game over");
-}
 
 
 function connect() {
@@ -242,17 +329,26 @@ function connect() {
     });
 
      //Handle state: prompt
-     socket.on('chat', function(message) {
+     socket.on('prompts', function(message) {
+        console.log('proceeding to prompts');
         app.handlePrompt(message);
     });
 
-    //Handle state: voting
+    //Handle state: answer
     socket.on('answers', function(message) {
+        console.log('proceeding to answers');
         app.handleAnswer(message);
+    });
+
+    //Handle state: voting
+    socket.on('voting', function(message) {
+        console.log('proceeding to voting');
+        app.handleVote(message);
     });
 
     //Handle state: results
     socket.on('results', function(message) {
+        console.log('proceeding to result');
         app.handleResults(message);
     });
 

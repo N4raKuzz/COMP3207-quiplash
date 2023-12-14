@@ -1,13 +1,19 @@
 <div class="container-fluid">
   <div class="row">
-    <h2>Scores of the round</h2>
+    <h2>Votes of the round</h2>
   </div>
   <div class="row">
-    <div class="card" style="max-width: 18rem" v-for="player in leaderboard">
+    <div class="card" style="max-width: 18rem">
       <div class="card-body">
-        <h5 class="card-title">{{ player.name }}</h5>
-        <p class="card-text">Scored {{ player.score }} points.</p>
+        <h5 class="card-title">{{ current_prompt }}</h5>
+        <p class="card-text">{{ current_score.p1name }} Get Score: {{ current_score.p1score }}</p>
+        <p class="card-text">{{ current_score.p2name }} Get Score: {{ current_score.p2score }}</p>
       </div>
     </div>
+  </div>
+  <button class="btn btn-primary" @click="score">OK</button>
+  <div v-if="isAdmin">
+    <button class="btn btn-primary" @click="end">Game Over</button>
+    <button class="btn btn-primary" @click="start">Start Again</button>
   </div>
 </div>

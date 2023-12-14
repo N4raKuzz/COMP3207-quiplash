@@ -2,21 +2,18 @@
   <div class="row">
     <h1>The lobby</h1>
     <h2>Waiting for players to join</h2>
+    <div v-if="isAdmin">
+      <button class="btn btn-primary" @click="start">Start Game</button>
+    </div>
   </div>
   <div class="row">
-    <div
-      class="card text-bg-primary"
-      style="width: 8rem; background-color: rgba(28, 32, 235, 0.26)"
-      v-for="user in playerlist"
-    >
-      <div class="card-body">
-        <h5 class="card-title">{{ user.username }} </h5>
-        <h6 class="card-subtitle mb-2 text-body-secondary">Player</h6>
-      </div>
-      <div class="card-body" v-for="user in audiencelist">
-        <h5 class="card-title">{{ user.username }}</h5>
-        <h6 class="card-subtitle mb-2 text-body-secondary">Audience</h6>
-      </div>
+    <div class="card-body" v-for="user in playerlist">
+      <h5 class="card-title">{{ user }} </h5>
+      <h6 class="card-subtitle mb-2 text-body-secondary">Player</h6>
+    </div>
+    <div class="card-body" v-for="user in audiencelist">
+      <h5 class="card-title">{{ user }}</h5>
+      <h6 class="card-subtitle mb-2 text-body-secondary">Audience</h6>
     </div>
   </div>
 </div>

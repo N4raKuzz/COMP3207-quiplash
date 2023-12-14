@@ -4,8 +4,7 @@
   </div>
   <div v-else>
     <div v-if="currentView === 'answers'">
-      <h1>Prompt:</h1>
-      <h1>{{ current_prompt }}</h1>
+      <h1>Prompt: {{ current_prompt }}</h1>
       <div class="container-fluid">
         <div class="form-group">
           <label for="prompt">Answer</label>
@@ -17,13 +16,13 @@
             placeholder="Enter your answer"
           />
         </div>
-        <button type="submit" class="btn btn-primary" @click="submitAnswer()">
+        <button type="submit" class="btn btn-primary" @click="answer">
           Submit
         </button>
       </div>
     </div>
-    <div v-if="currentView === 'wait'">
-      <% include('wait'); %>
+    <div v-if="isAdmin">
+      <button class="btn btn-primary" @click="next">Next</button>
     </div>
   </div>
 </div>
